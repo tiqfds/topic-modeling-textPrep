@@ -5,29 +5,39 @@ from preprocessing_pipeline.NextGen import NextGen
 from preprocessing_pipeline import (Preprocess, RemovePunctuation, Capitalization, RemoveStopWords,
                                     RemoveShortWords, TwitterCleaner, RemoveUrls)
 
+from pprint import pprint
+import nltk 
+nltk.download()
+
 
 def load_flat_dataset(path):
     dataset = []
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         for line in f:
             dataset.append(line.strip().split(' '))
     return dataset
 
-
 def load_dataset_with_dates(path):
     dataset = []
-    with open(path, 'r') as f:
-        for line in f:
-            dataset.append(line.strip().split('\t')[1].split(' '))
-    return dataset
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                dataset.append(line.strip().split('\t')[0].split(' '))
+        return dataset
+    except FileNotFoundError:
+        print('The path provided for your dataset does not exist: {}'.format(path))
+        import sys
+        sys.exit()
+
+import csv
 
 
 if __name__ == '__main__':
-    dataset_names = ['sample_tweets']
-    forbidden_words = []  # list of words to be blacklisted [amp, rt, ...]
-    syn_file = None  # synonym file containing line for each set of synonyms: [word], [synonym1], [synonym2], ...
-    extra_ngrams = []  # list of $-separated ngrams: [new$york$city, joe$biden, donald$trump, no$new$taxes]
 
+    dataset_test = load_flat_dataset('data/full_raw_data_EDA.csv')
+    pprint(dataset_test[:5])
+
+    dataset_names = ['full_raw_data_EDA']
     for j in range(0, len(dataset_names)):
         ds = dataset_names[j]
 
@@ -55,7 +65,7 @@ if __name__ == '__main__':
         ng = NextGen()
         path = 'data/{}.csv'.format(ds)
         dataset = load_dataset_with_dates(path)
-        processed_dataset = ng.full_preprocess(dataset, pipeline, ngram_min_freq=10, extra_bigrams=None, extra_ngrams=extra_ngrams)
+        processed_dataset = ng.full_preprocess(dataset, pipeline, ngram_min_freq=10, extra_bigrams=None)
 
         with open('data/{}_lightweight.csv'.format(ds), 'w') as f:
             for i in range(0, len(processed_dataset)):
@@ -63,10 +73,10 @@ if __name__ == '__main__':
                 f.write('{}\n'.format(' '.join(doc)))
 
         freq = {}
-        freq = word_tf_df(freq, processed_dataset)
+        freq = word_tf_df(freq, processed_dataset)   
         processed_dataset = ng.filter_by_tfidf(dataset=processed_dataset, freq=freq, threshold=0.25)
 
-        with open('data/{}_lightweight_tdidf.csv'.format(ds), 'w') as f:
-            for i in range(0, len(processed_dataset)):
-                doc = processed_dataset[i]
-                f.write('{}\n'.format(' '.join(doc)))
+        # with open('data/{}_lightweight_tdidf.csv'.format(ds), 'w') as f:
+        #     for i in range(0, len(processed_dataset)):
+        #         doc = processed_dataset[i]
+        #         f.write('{}\n'.format(' '.join(doc)))
